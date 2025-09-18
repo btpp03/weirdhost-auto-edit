@@ -1,60 +1,32 @@
-name: 自动增加服务器时间
+name: Add Server Time
 
 on:
-  workflow_dispatch: # 允许在 Actions 页面手动触发此工作流，方便测试
   schedule:
-    # 使用 CRON 表达式定义定时任务，所有时间均为 UTC 时间。
-    # '0 4 * * *' 表示在 UTC 时间的每天凌晨4点执行。
-    # 如果您位于东八区（如北京时间），这对应您本地时间的每天中午12点。
-    - cron: '0 4 * * *'
+    # 每天 12:00 UTC（中国时间 20:00）运行一次
+    - cron: '0 12 * * *'
+  workflow_dispatch:  # 允许手动触发
 
 jobs:
   add_time:
-    runs-on: ubuntu-latest # 在最新的 Ubuntu 环境上运行
-
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository # 步骤1: 检出仓库代码
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Set up Python # 步骤2: 安装 Python 环境
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
 
-      - name: Install Playwright and dependencies # 步骤3: 安装 Playwright 及 Chromium
+      - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install playwright
-          playwright install --with-deps chromium
+          playwright install chromium
 
-      - name: Run Time Adder Script # 步骤4: 运行 Python 脚本（两个账号）
+      - name: Run main.py script
         env:
-          REMEMBER_WEB_COOKIE1: ${{ secrets.REMEMBER_WEB_COOKIE1 }}
-          REMEMBER_WEB_COOKIE2: ${{ secrets.REMEMBER_WEB_COOKIE2 }}
-        run: python main.py
-
-      - name: Upload error artifacts # 步骤5: 如果失败，上传截图调试
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: error-screenshots
-          path: "*.png"
-
-      - name: Commit time.txt to repo # 步骤6: 更新 time.txt，方便确认运行时间
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REMEMBER_WEB_COOKIE: ${{ secrets.REMEMBER_WEB_COOKIE }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          echo "$(date +'%Y-%m-%d %H:%M:%S')" > time.txt
-          git add time.txt
-
-          if git diff --cached --quiet; then
-            echo "无变化，无需提交"
-          else
-            git commit -m "⏰ 更新时间文件: $(date +'%Y-%m-%d %H:%M:%S')"
-            git push origin HEAD:main
-          fi
+          python main.py
