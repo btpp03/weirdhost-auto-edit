@@ -12,7 +12,6 @@ def add_server_time(server_url="https://hub.weirdhost.xyz/server/c7206128"):
     pterodactyl_email = os.environ.get('PTERODACTYL_EMAIL')
     pterodactyl_password = os.environ.get('PTERODACTYL_PASSWORD')
 
-    # 检查是否提供了任何登录凭据
     if not (remember_web_cookie or (pterodactyl_email and pterodactyl_password)):
         print("错误: 缺少登录凭据。请设置 REMEMBER_WEB_COOKIE 或 PTERODACTYL_EMAIL 和 PTERODACTYL_PASSWORD 环境变量。")
         return False
@@ -23,7 +22,7 @@ def add_server_time(server_url="https://hub.weirdhost.xyz/server/c7206128"):
         page.set_default_timeout(90000)  # 默认超时时间 90 秒
 
         try:
-            # --- 方案一：优先尝试使用 Cookie 会话登录 ---
+            # --- Cookie 登录 ---
             if remember_web_cookie:
                 print("检测到 REMEMBER_WEB_COOKIE，尝试使用 Cookie 登录...")
                 session_cookie = {
@@ -52,10 +51,10 @@ def add_server_time(server_url="https://hub.weirdhost.xyz/server/c7206128"):
                 else:
                     print("Cookie 登录成功，已进入服务器页面。")
 
-            # --- 方案二：如果 Cookie 方案失败或未提供，则使用邮箱密码登录 ---
+            # --- 邮箱密码登录 ---
             if not remember_web_cookie:
                 if not (pterodactyl_email and pterodactyl_password):
-                    print("错误: Cookie 无效，且未提供 PTERODACTYL_EMAIL 或 PTERODACTYL_PASSWORD。无法登录。")
+                    print("错误: Cookie 无效，且未提供邮箱或密码，无法登录。")
                     browser.close()
                     return False
 
@@ -67,16 +66,13 @@ def add_server_time(server_url="https://hub.weirdhost.xyz/server/c7206128"):
                 password_selector = 'input[name="password"]'
                 login_button_selector = 'button[type="submit"]'
 
-                print("等待登录表单元素加载...")
                 page.wait_for_selector(email_selector)
                 page.wait_for_selector(password_selector)
                 page.wait_for_selector(login_button_selector)
 
-                print("正在填写邮箱和密码...")
                 page.fill(email_selector, pterodactyl_email)
                 page.fill(password_selector, pterodactyl_password)
 
-                print("正在点击登录按钮...")
                 with page.expect_navigation(wait_until="domcontentloaded", timeout=60000):
                     page.click(login_button_selector)
 
@@ -89,47 +85,20 @@ def add_server_time(server_url="https://hub.weirdhost.xyz/server/c7206128"):
                 else:
                     print("邮箱密码登录成功。")
 
-            # --- 确保当前位于正确的服务器页面 ---
+            # --- 确保在目标服务器页面 ---
             if page.url != server_url:
                 print(f"当前不在目标服务器页面，正在导航至: {server_url}")
                 page.goto(server_url, wait_until="domcontentloaded", timeout=90000)
                 if "login" in page.url:
-                    print("导航失败，会话可能已失效，需要重新登录。")
+                    print("导航失败，会话可能已失效。")
                     page.screenshot(path="server_page_nav_fail.png")
                     browser.close()
                     return False
 
             # --- 核心操作：查找并点击 "시간 추가" 按钮（兼容前置空格） ---
-            add_button_selector = 'button:has-text(/^\s*시간 추가/)'
-            print(f"正在查找并等待按钮（可包含前置空格）...")
-
-            try:
-                add_button = page.locator(add_button_selector)
-                add_button.wait_for(state='visible', timeout=30000)
-                add_button.click()
-                print("成功点击 '시간 추가' 按钮。")
-                time.sleep(5)  # 等待 5 秒，确保操作在服务器端生效
-                print("任务完成。")
-                browser.close()
-                return True
-            except PlaywrightTimeoutError:
-                print("错误: 在30秒内未找到或按钮不可见/不可点击。")
-                page.screenshot(path="add_6h_button_not_found.png")
-                browser.close()
-                return False
-
-        except Exception as e:
-            print(f"执行过程中发生未知错误: {e}")
-            page.screenshot(path="general_error.png")
-            browser.close()
-            return False
-
-if __name__ == "__main__":
-    print("开始执行添加服务器时间任务...")
-    success = add_server_time()
-    if success:
-        print("任务执行成功。")
-        exit(0)
-    else:
-        print("任务执行失败。")
-        exit(1)
+            print("正在查找并等待 '시간 추가' 按钮（可包含前置空格）...")
+            buttons = page.locator("button")
+            found = False
+            for i in range(buttons.count()):
+                text = buttons.nth(i).inner_text().strip()
+                if text == "시간 추가":
