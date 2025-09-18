@@ -7,7 +7,8 @@ REMEMBER_WEB_COOKIE = os.environ.get("REMEMBER_WEB_COOKIE")
 def add_server_time(server_url):
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # GitHub Actions 需要 --no-sandbox
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"])
             context = browser.new_context()
 
             # 设置 Cookie 登录
@@ -19,21 +20,24 @@ def add_server_time(server_url):
                 }])
 
             page = context.new_page()
-            page.goto(server_url)
+            page.goto(server_url, timeout=30000)  # 最多等30秒页面加载
 
-            # 匹配 “时间追加” 按钮（有空格 / 没空格都能匹配）
-            page.get_by_role("button", name=re.compile("시간 ?추가")).click(timeout=5000)
+            print(f"当前页面 URL: {page.url}")
 
-            print(f"✅ 成功续期: {server_url}")
+            # 等待按钮出现，最多 15 秒
+            try:
+                page.get_by_role("button", name=re.compile("시간 ?추가")).wait_for(timeout=15000)
+                page.get_by_role("button", name=re.compile("시간 ?추가")).click(timeout=5000)
+                print(f"✅ 成功续期: {server_url}")
+            except TimeoutError:
+                print(f"⚠️ 找不到按钮，可能页面未登录或加载慢: {server_url}")
+                print("页面前1000字符内容:\n", page.content()[:1000])
 
             browser.close()
-    except TimeoutError:
-        print(f"⚠️ 找不到按钮或页面加载超时: {server_url}")
     except Exception as e:
         print(f"❌ 续期失败 {server_url}: {e}")
 
 if __name__ == "__main__":
-    # 两个实例都跑一次
     servers = [
         "https://hub.weirdhost.xyz/server/ef806adc",
         "https://hub.weirdhost.xyz/server/b52faaa2"
