@@ -1,5 +1,6 @@
 import os
 import time
+import re
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
 def add_server_time(server_url="https://hub.weirdhost.xyz/server/c7206128"):
@@ -40,7 +41,6 @@ def add_server_time(server_url="https://hub.weirdhost.xyz/server/c7206128"):
 
                 try:
                     page.goto(server_url, wait_until="domcontentloaded", timeout=90000)
-                    # 检查是否因 Cookie 无效被重定向到登录页
                     if "login" in page.url or "auth" in page.url:
                         print("Cookie 登录失败或会话已过期，将回退到邮箱密码登录。")
                         page.context.clear_cookies()
@@ -96,13 +96,13 @@ def add_server_time(server_url="https://hub.weirdhost.xyz/server/c7206128"):
                     browser.close()
                     return False
 
-            # --- 核心操作：查找并点击 "시간 추가" 按钮（兼容前置空格） ---
-            print("正在查找并等待 '시간 추가' 按钮（可包含前置空格）...")
+            # --- 核心操作：查找并点击 "시간 추가" 按钮（兼容空格/换行） ---
+            print("正在查找并等待 '시간 추가' 按钮（可包含前置空格/换行）...")
             buttons = page.locator("button")
             found = False
             for i in range(buttons.count()):
-                text = buttons.nth(i).inner_text().strip()
-                if text == "시간 추가":
+                text = buttons.nth(i).inner_text()
+                if re.search(r"\s*시간\s*추가", text):
                     buttons.nth(i).click()
                     print("成功点击 '시간 추가' 按钮。")
                     time.sleep(5)
