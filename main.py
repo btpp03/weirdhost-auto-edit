@@ -39,11 +39,11 @@ def add_server_time(server_url: str, cookie_value: str):
 if __name__ == "__main__":
     # 账号1
     cookie1 = os.getenv("REMEMBER_WEB_COOKIE1")
-    server1 = "https://hub.weirdhost.xyz/server/xxxxxxx"  # 换成账号1的服务器地址
+    server1 = "https://hub.weirdhost.xyz/server/ef806adc"  # 换成账号1的服务器地址
 
     # 账号2
     cookie2 = os.getenv("REMEMBER_WEB_COOKIE2")
-    server2 = "https://hub.weirdhost.xyz/server/yyyyyyy"  # 换成账号2的服务器地址
+    server2 = "https://hub.weirdhost.xyz/server/b52faaa2"  # 换成账号2的服务器地址
 
     if cookie1:
         add_server_time(server1, cookie1)
